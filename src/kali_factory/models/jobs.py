@@ -7,17 +7,19 @@ slipping a `;` into a domain name and getting shell injection.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl
 
 # Strict identifier pattern: only used for things like image suffix or org name
 _SAFE_NAME = r"^[a-zA-Z0-9._-]+$"
-_DOMAIN = r"^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
+# pydantic-core uses Rust regex which doesn't support look-arounds. The 253-char
+# RFC 1035 length cap is enforced separately via Field(max_length=...).
+_DOMAIN = r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     queued = "queued"
     started = "started"
     finished = "finished"
@@ -42,13 +44,19 @@ class OSINTRunJob(_JobBase):
     """Generic typed-tool dispatch — caller specifies which manifest tool to invoke."""
 
     type: Literal["osint_run"] = "osint_run"
-    tool: str = Field(pattern=_SAFE_NAME, description="Tool key from tools.json (e.g. 'amass.enum')")
-    args: dict[str, str] = Field(default_factory=dict, description="Args matching the tool's template")
+    tool: str = Field(
+        pattern=_SAFE_NAME,
+        description="Tool key from tools.json (e.g. 'amass.enum')",
+    )
+    args: dict[str, str] = Field(
+        default_factory=dict,
+        description="Args matching the tool's template",
+    )
 
 
 class SubdomainEnumJob(_JobBase):
     type: Literal["subdomain_enum"] = "subdomain_enum"
-    domain: str = Field(pattern=_DOMAIN)
+    domain: str = Field(pattern=_DOMAIN, max_length=253)
     passive_only: bool = True
 
 
@@ -72,16 +80,12 @@ class TrafficCaptureJob(_JobBase):
 class NucleiExposuresJob(_JobBase):
     type: Literal["nuclei_exposures"] = "nuclei_exposures"
     url: HttpUrl
-    template_subset: Literal["exposures", "technologies"] = "exposures"
-
-    @field_validator("template_subset")
-    @classmethod
-    def _block_dangerous_subsets(cls, v: str) -> str:
-        # belt-and-suspenders: even if Pydantic Literal is bypassed, reject
-        # template subsets that map to CVE / exploit templates.
-        if v not in ("exposures", "technologies"):
-            raise ValueError(f"template_subset {v!r} not allowed")
-        return v
+    # Must match policy.allowlist.ALLOWED_NUCLEI_TEMPLATE_SUBSETS exactly.
+    # cves/, vulnerabilities/, default-logins/, fuzzing/, exploits/, and
+    # network/ are never accepted — they send active payloads.
+    template_subset: Literal[
+        "exposures", "technologies", "misconfiguration", "dns", "ssl"
+    ] = "exposures"
 
 
 # Discriminated union — used in API request validation

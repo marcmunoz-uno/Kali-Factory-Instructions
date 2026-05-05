@@ -23,17 +23,24 @@ You're an agent that wants to run Kali OSINT tooling. You want results, not a sh
 
 ## What is NEVER allowed
 
-These will be rejected at the API and again at the worker, even if you craft a valid payload:
+The full forbidden list lives in `runtimes/kali/tools.json` (`shell_blocklist`) and `src/kali_factory/policy/allowlist.py` (`BLOCKED_TOOLS`). Categories:
 
-- `metasploit`, `msfvenom`, `msfconsole`
-- `sqlmap`
-- `hashcat`, `john`
-- `aircrack-ng`, `airmon-ng`
-- `hydra`, `medusa`, `ncrack`
-- `nikto`, `wpscan`
-- `responder`, `crackmapexec`
-- `nuclei` with `cves/`, `vulnerabilities/`, `default-logins/`, `fuzzing/`, or `exploits/` template directories
-- Arbitrary shell — there is no "run this command" endpoint
+- **Exploit / payload frameworks** — metasploit (msfconsole/msfvenom), sqlmap, commix, xsser/xsstrike, weevely, beef, set/setoolkit
+- **Credential cracking** — hashcat, john, hydra, medusa, ncrack, patator, kerbrute
+- **Wireless attacks** — aircrack-ng, airmon-ng, airodump-ng, kismet, reaver, wifite
+- **Active MITM / network spoofing** — ettercap, bettercap, mitm6, dsniff, dnschef, dnsspoof, arpspoof, macchanger
+- **Noisy web vuln scanners** — nikto, wpscan
+- **Post-exploitation / AD attack** — responder, crackmapexec/nxc, evil-winrm, bloodhound, impacket-{secretsdump,psexec,wmiexec,smbexec,getuserspns,getnpusers}
+- **Exploit databases** — exploitdb, searchsploit
+- **Router exploits** — routersploit
+- **C2 frameworks** — empire, covenant, mythic, pupy
+- **Payload generators** — thefatrat, veil
+- **Tunneling / pivoting** — chisel, ligolo-ng, gost
+- **IPv6 attack toolkit** — thc-ipv6
+- **`nuclei` with template dirs** `cves/`, `vulnerabilities/`, `default-logins/`, `fuzzing/`, `exploits/`, `network/`
+- **Arbitrary shell** — there is no "run this command" endpoint
+
+`nuclei` template subsets that ARE allowed: `exposures/`, `technologies/`, `misconfiguration/`, `dns/`, `ssl/` — passive info-disclosure and read-only checks only.
 
 ## Workflow
 

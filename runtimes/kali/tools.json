@@ -2,33 +2,82 @@
   "runtime": "kali",
   "image_version": "kali-rolling-2026-q2",
   "scope": "osint-recon-only",
-  "_comment": "Allowlist for the Kali Factory runtime. OSINT + recon + traffic capture only. Mirror of the kali-factory/policy/allowlist.py constants — keep in sync.",
+  "_comment": "Allowlist for the Kali Factory runtime. Maximize OSINT/recon userland; purge everything actively offensive. Mirror of src/kali_factory/policy/allowlist.py — keep in sync. CI verifies.",
+
   "shell_allowlist": [
-    "amass", "whatweb", "gobuster", "wfuzz",
-    "linkfinder", "secretfinder", "arjun",
-    "trufflehog", "nuclei",
+    "amass", "subfinder", "massdns",
+    "dig", "nslookup", "host", "whois",
+    "dnsenum", "dnsrecon", "fierce", "dnsx",
+    "whatweb", "wafw00f",
+    "gobuster", "wfuzz", "ffuf", "feroxbuster", "dirsearch",
+    "httpx", "httpx-toolkit",
+    "katana", "naabu",
+    "gowitness",
+    "linkfinder", "secretfinder", "arjun", "paramspider",
+    "trufflehog", "gitleaks",
+    "sherlock", "holehe", "maigret",
+    "theharvester", "recon-ng", "spiderfoot",
+    "nuclei",
     "mitmproxy", "mitmdump",
-    "dig", "nslookup", "dnsenum",
-    "curl", "jq", "python3"
+    "nmap", "traceroute", "mtr",
+    "tcpdump", "tshark",
+    "sslscan", "sslyze", "openssl",
+    "curl", "wget", "httpie", "http", "aria2c", "rsync",
+    "nc", "ncat", "socat", "ssh", "scp", "sftp",
+    "binwalk", "foremost", "bulk_extractor",
+    "exiftool", "file", "strings",
+    "p7zip", "unzip", "7z",
+    "pdftotext", "pdfinfo", "pdfimages",
+    "jq", "yq", "rg", "tree", "pandoc", "xmlstarlet",
+    "shellcheck", "yamllint",
+    "git", "python3", "pip3", "node", "npm"
   ],
+
   "shell_blocklist": [
     "msfconsole", "msfvenom", "metasploit",
-    "sqlmap",
+    "sqlmap", "commix",
+    "xsser", "xsstrike",
+    "weevely", "beef", "beef-xss",
+    "setoolkit", "set",
     "hashcat", "john",
+    "hydra", "medusa", "ncrack", "patator", "kerbrute",
     "aircrack-ng", "airmon-ng", "airodump-ng",
-    "exploitdb", "searchsploit",
-    "hydra", "medusa", "ncrack",
+    "kismet", "reaver", "wifite",
+    "ettercap", "bettercap", "mitm6", "dsniff", "dnschef", "dnsspoof",
+    "arpspoof", "macchanger",
     "nikto", "wpscan",
-    "responder", "crackmapexec",
-    "chisel", "ligolo-ng", "gost"
+    "responder", "crackmapexec", "nxc",
+    "evil-winrm", "bloodhound",
+    "impacket-secretsdump", "impacket-psexec", "impacket-wmiexec",
+    "impacket-smbexec", "impacket-getuserspns", "impacket-getnpusers",
+    "exploitdb", "searchsploit",
+    "routersploit",
+    "empire", "covenant", "mythic", "pupy",
+    "thefatrat", "veil",
+    "chisel", "ligolo-ng", "gost",
+    "thc-ipv6"
   ],
+
+  "_nuclei_template_subsets": {
+    "_comment": "Job-schema NucleiExposuresJob accepts only these subsets. cves/, vulnerabilities/, default-logins/, fuzzing/, exploits/, network/ are explicitly forbidden — they send active payloads, brute creds, or run exploit logic.",
+    "allowed": ["exposures", "technologies", "misconfiguration", "dns", "ssl"],
+    "blocked": ["cves", "vulnerabilities", "default-logins", "fuzzing", "exploits", "network"]
+  },
+
   "tools": {
     "amass.enum": {
       "binary": "amass",
-      "args_template": ["enum", "-d", "{domain}", "-o", "{output_path}"],
-      "passive_arg": "-passive",
+      "args_template": ["enum", "-passive", "-d", "{domain}", "-o", "{output_path}"],
+      "passive_only": true,
       "max_runtime_sec": 600,
       "max_concurrent_per_agent": 2
+    },
+    "subfinder.enum": {
+      "binary": "subfinder",
+      "args_template": ["-d", "{domain}", "-silent", "-o", "{output_path}"],
+      "passive_only": true,
+      "max_runtime_sec": 300,
+      "max_concurrent_per_agent": 3
     },
     "whatweb.fingerprint": {
       "binary": "whatweb",
@@ -36,22 +85,57 @@
       "max_runtime_sec": 60,
       "max_concurrent_per_agent": 5
     },
+    "wafw00f.detect": {
+      "binary": "wafw00f",
+      "args_template": ["-a", "-o", "{output_path}", "{url}"],
+      "max_runtime_sec": 60
+    },
+    "httpx.probe": {
+      "binary": "httpx-toolkit",
+      "args_template": ["-u", "{url}", "-silent", "-json", "-tech-detect", "-status-code", "-title"],
+      "max_runtime_sec": 60,
+      "max_concurrent_per_agent": 5
+    },
+    "katana.crawl": {
+      "binary": "katana",
+      "args_template": ["-u", "{url}", "-silent", "-jc", "-o", "{output_path}"],
+      "max_runtime_sec": 300,
+      "max_concurrent_per_agent": 2,
+      "rate_limit_req_per_sec": 20
+    },
     "gobuster.dir": {
       "binary": "gobuster",
-      "args_template": ["dir", "-u", "{url}", "-w", "{wordlist}", "-q"],
+      "args_template": ["dir", "-u", "{url}", "-w", "{wordlist}", "-q", "--delay", "100ms"],
       "max_runtime_sec": 300,
       "max_concurrent_per_agent": 1,
       "rate_limit_req_per_sec": 10
+    },
+    "ffuf.dir": {
+      "binary": "ffuf",
+      "args_template": ["-u", "{url}", "-w", "{wordlist}", "-of", "json", "-o", "{output_path}", "-rate", "20"],
+      "max_runtime_sec": 300,
+      "max_concurrent_per_agent": 1
     },
     "linkfinder.scan": {
       "binary": "python3",
       "args_template": ["-m", "linkfinder", "-i", "{js_url_or_path}"],
       "max_runtime_sec": 120
     },
+    "paramspider.mine": {
+      "binary": "paramspider",
+      "args_template": ["-d", "{domain}", "-o", "{output_path}"],
+      "passive_only": true,
+      "max_runtime_sec": 300
+    },
     "trufflehog.github": {
       "binary": "trufflehog",
       "args_template": ["github", "--org={org}", "--json"],
       "max_runtime_sec": 1800
+    },
+    "gitleaks.scan_repo": {
+      "binary": "gitleaks",
+      "args_template": ["detect", "--source", "{repo_path}", "--report-format", "json", "--report-path", "{output_path}"],
+      "max_runtime_sec": 600
     },
     "nuclei.exposures_only": {
       "binary": "nuclei",
@@ -61,14 +145,43 @@
         "vulnerabilities/",
         "default-logins/",
         "fuzzing/",
-        "exploits/"
+        "exploits/",
+        "network/"
       ],
       "max_runtime_sec": 300
+    },
+    "sslscan.audit": {
+      "binary": "sslscan",
+      "args_template": ["--xml={output_path}", "{host_port}"],
+      "max_runtime_sec": 120
+    },
+    "theharvester.search": {
+      "binary": "theHarvester",
+      "args_template": ["-d", "{domain}", "-b", "all", "-f", "{output_path}"],
+      "passive_only": true,
+      "max_runtime_sec": 600
+    },
+    "sherlock.username": {
+      "binary": "sherlock",
+      "args_template": ["{username}", "--print-found", "--no-color"],
+      "passive_only": true,
+      "max_runtime_sec": 300
+    },
+    "exiftool.metadata": {
+      "binary": "exiftool",
+      "args_template": ["-json", "{file_path}"],
+      "max_runtime_sec": 30
+    },
+    "binwalk.scan": {
+      "binary": "binwalk",
+      "args_template": ["{file_path}"],
+      "max_runtime_sec": 120
     },
     "mitmproxy.capture": {
       "binary": "mitmdump",
       "args_template": ["-q", "-w", "{output_capture_path}", "--listen-port", "{port}"],
-      "max_runtime_sec": 1800
+      "max_runtime_sec": 1800,
+      "_note": "passive capture only; agent must drive its own browser/client through the proxy"
     }
   }
 }

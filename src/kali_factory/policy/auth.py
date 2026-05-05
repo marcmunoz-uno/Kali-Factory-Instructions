@@ -13,7 +13,6 @@ from pathlib import Path
 
 from fastapi import Header, HTTPException, status
 
-
 _TOKEN_CACHE: str | None = None
 
 

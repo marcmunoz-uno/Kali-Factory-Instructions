@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kali-factory"
-version = "0.0.1"
+version = "0.0.2"
 description = "Safer host-local control plane for AI agents to access Kali Linux OSINT tooling — typed jobs, allowlisted tools, bearer auth, MCP."
 readme = "README.md"
 requires-python = ">=3.11"
