@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check src/
+      - name: Mypy
+        run: mypy src/kali_factory || true   # don't fail CI yet — pre-alpha
+
+  validate-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tools.json
+        run: python -c "import json; m=json.load(open('runtimes/kali/tools.json')); assert m['runtime']=='kali'; print('manifest OK')"
+      - name: Verify allowlist consistency
+        run: |
+          python3 -c "
+          import json
+          m = json.load(open('runtimes/kali/tools.json'))
+          # The shell_blocklist in JSON must match BLOCKED_TOOLS in policy/allowlist.py
+          import re
+          py = open('src/kali_factory/policy/allowlist.py').read()
+          # Soft check: warn if a tool is in one but not the other
+          json_block = set(m['shell_blocklist'])
+          py_block = set(re.findall(r'\"([a-z][a-z0-9_-]+)\"', py.split('BLOCKED_TOOLS')[1].split('})')[0]))
+          missing_in_py = json_block - py_block
+          missing_in_json = py_block - json_block
+          if missing_in_py: print(f'WARN: in JSON but not in policy: {missing_in_py}')
+          if missing_in_json: print(f'WARN: in policy but not in JSON: {missing_in_json}')
+          print('allowlist sync check done')
+          "

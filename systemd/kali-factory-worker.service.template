@@ -1,0 +1,14 @@
+[Unit]
+Description=Kali Factory Worker
+After=network.target docker.service kali-factory-api.service
+
+[Service]
+Type=simple
+WorkingDirectory={{REPO_ROOT}}
+EnvironmentFile={{REPO_ROOT}}/.env
+ExecStart={{REPO_ROOT}}/.venv/bin/python -m kali_factory.worker.main
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

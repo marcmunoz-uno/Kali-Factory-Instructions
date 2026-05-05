@@ -1,0 +1,74 @@
+{
+  "runtime": "kali",
+  "image_version": "kali-rolling-2026-q2",
+  "scope": "osint-recon-only",
+  "_comment": "Allowlist for the Kali Factory runtime. OSINT + recon + traffic capture only. Mirror of the kali-factory/policy/allowlist.py constants — keep in sync.",
+  "shell_allowlist": [
+    "amass", "whatweb", "gobuster", "wfuzz",
+    "linkfinder", "secretfinder", "arjun",
+    "trufflehog", "nuclei",
+    "mitmproxy", "mitmdump",
+    "dig", "nslookup", "dnsenum",
+    "curl", "jq", "python3"
+  ],
+  "shell_blocklist": [
+    "msfconsole", "msfvenom", "metasploit",
+    "sqlmap",
+    "hashcat", "john",
+    "aircrack-ng", "airmon-ng", "airodump-ng",
+    "exploitdb", "searchsploit",
+    "hydra", "medusa", "ncrack",
+    "nikto", "wpscan",
+    "responder", "crackmapexec",
+    "chisel", "ligolo-ng", "gost"
+  ],
+  "tools": {
+    "amass.enum": {
+      "binary": "amass",
+      "args_template": ["enum", "-d", "{domain}", "-o", "{output_path}"],
+      "passive_arg": "-passive",
+      "max_runtime_sec": 600,
+      "max_concurrent_per_agent": 2
+    },
+    "whatweb.fingerprint": {
+      "binary": "whatweb",
+      "args_template": ["--no-errors", "--log-json=/dev/stdout", "{url}"],
+      "max_runtime_sec": 60,
+      "max_concurrent_per_agent": 5
+    },
+    "gobuster.dir": {
+      "binary": "gobuster",
+      "args_template": ["dir", "-u", "{url}", "-w", "{wordlist}", "-q"],
+      "max_runtime_sec": 300,
+      "max_concurrent_per_agent": 1,
+      "rate_limit_req_per_sec": 10
+    },
+    "linkfinder.scan": {
+      "binary": "python3",
+      "args_template": ["-m", "linkfinder", "-i", "{js_url_or_path}"],
+      "max_runtime_sec": 120
+    },
+    "trufflehog.github": {
+      "binary": "trufflehog",
+      "args_template": ["github", "--org={org}", "--json"],
+      "max_runtime_sec": 1800
+    },
+    "nuclei.exposures_only": {
+      "binary": "nuclei",
+      "args_template": ["-u", "{url}", "-t", "exposures/", "-jsonl", "-silent"],
+      "blocked_template_dirs": [
+        "cves/",
+        "vulnerabilities/",
+        "default-logins/",
+        "fuzzing/",
+        "exploits/"
+      ],
+      "max_runtime_sec": 300
+    },
+    "mitmproxy.capture": {
+      "binary": "mitmdump",
+      "args_template": ["-q", "-w", "{output_capture_path}", "--listen-port", "{port}"],
+      "max_runtime_sec": 1800
+    }
+  }
+}

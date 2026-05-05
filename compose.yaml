@@ -1,0 +1,23 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: kali-factory-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Optional sidecar for retaining recon findings across runs.
+  # Uncomment if you want the API to persist results into a vector DB.
+  # chromadb:
+  #   image: chromadb/chroma:latest
+  #   container_name: kali-factory-chroma
+  #   ports:
+  #     - "127.0.0.1:8001:8000"
+  #   volumes:
+  #     - ./data/chroma:/chroma/chroma
+  #   restart: unless-stopped
